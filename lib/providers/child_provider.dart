@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import '../models/child_model.dart';
-import '../models/harian_model.dart';
-import '../models/bonus_model.dart';
+import '../models/daily_treat_model.dart';
+import '../models/big_goal_model.dart';
 import '../services/database_service.dart';
 
 class ChildProvider extends ChangeNotifier {
@@ -16,7 +16,6 @@ class ChildProvider extends ChangeNotifier {
 
   void setChildren(List<ChildModel> children) {
     _children = children;
-    // Update selected child if it exists in the new list
     if (_selectedChild != null) {
       final updated = children.where((c) => c.id == _selectedChild!.id).firstOrNull;
       if (updated != null) {
@@ -53,71 +52,84 @@ class ChildProvider extends ChangeNotifier {
     }
   }
 
-  /// Increase the level (good behavior). Returns true if earned a star.
+  /// Increase level (good behavior). Returns true if earned a star.
+  /// Also adds progress to the selected big goal.
   Future<bool> increaseScore(ChildModel child) async {
     bool earnedStar = child.increaseScore();
-    await _db.updateChildScore(child);
+    await _db.updateChild(child);
     notifyListeners();
     return earnedStar;
   }
 
-  /// Decrease the level (bad behavior)
+  /// Decrease level (bad behavior)
   Future<void> decreaseScore(ChildModel child) async {
     child.decreaseScore();
-    await _db.updateChildScore(child);
+    await _db.updateChild(child);
     notifyListeners();
   }
 
-  /// Claim a harian reward (costs hariankey)
-  Future<bool> claimHarian(ChildModel child, HarianModel harian) async {
-    if (child.hariankey >= harian.price) {
-      child.hariankey -= harian.price;
-      await _db.updateChildScore(child);
+  /// Add a daily treat to child
+  Future<void> addDailyTreat(ChildModel child, DailyTreat treat) async {
+    child.dailyTreats.add(treat);
+    await _db.updateChild(child);
+    notifyListeners();
+  }
+
+  /// Remove a daily treat
+  Future<void> removeDailyTreat(ChildModel child, int index) async {
+    if (index >= 0 && index < child.dailyTreats.length) {
+      child.dailyTreats.removeAt(index);
+      await _db.updateChild(child);
       notifyListeners();
-      return true;
+    }
+  }
+
+  /// Add a big goal to child
+  Future<void> addBigGoal(ChildModel child, BigGoal goal) async {
+    child.bigGoals.add(goal);
+    // Auto-select if first goal
+    if (child.bigGoals.length == 1) {
+      child.selectedGoalIndex = 0;
+    }
+    await _db.updateChild(child);
+    notifyListeners();
+  }
+
+  /// Remove a big goal
+  Future<void> removeBigGoal(ChildModel child, int index) async {
+    if (index >= 0 && index < child.bigGoals.length) {
+      child.bigGoals.removeAt(index);
+      // Update selected goal index if needed
+      if (child.selectedGoalIndex == index) {
+        child.selectedGoalIndex = child.bigGoals.isEmpty ? null : 0;
+      } else if (child.selectedGoalIndex != null && child.selectedGoalIndex! > index) {
+        child.selectedGoalIndex = child.selectedGoalIndex! - 1;
+      }
+      await _db.updateChild(child);
+      notifyListeners();
+    }
+  }
+
+  /// Select a big goal to work toward
+  Future<void> selectBigGoal(ChildModel child, int index) async {
+    if (index >= 0 && index < child.bigGoals.length) {
+      child.selectedGoalIndex = index;
+      await _db.updateChild(child);
+      notifyListeners();
+    }
+  }
+
+  /// Claim a completed big goal
+  Future<bool> claimBigGoal(ChildModel child, int index) async {
+    if (index >= 0 && index < child.bigGoals.length) {
+      final goal = child.bigGoals[index];
+      if (goal.isComplete) {
+        goal.isClaimed = true;
+        await _db.updateChild(child);
+        notifyListeners();
+        return true;
+      }
     }
     return false;
-  }
-
-  /// Claim a bonus reward (costs stars)
-  Future<bool> claimBonus(ChildModel child, BonusModel bonus) async {
-    if (child.claimBonus(bonus.price)) {
-      await _db.updateChildScore(child);
-      notifyListeners();
-      return true;
-    }
-    return false;
-  }
-
-  /// Add a harian item to a child
-  Future<void> addHarian(ChildModel child, HarianModel harian) async {
-    child.harian.add(harian);
-    await _db.updateChildHarian(child);
-    notifyListeners();
-  }
-
-  /// Remove a harian item from a child
-  Future<void> removeHarian(ChildModel child, int index) async {
-    if (index >= 0 && index < child.harian.length) {
-      child.harian.removeAt(index);
-      await _db.updateChildHarian(child);
-      notifyListeners();
-    }
-  }
-
-  /// Add a bonus item to a child
-  Future<void> addBonus(ChildModel child, BonusModel bonus) async {
-    child.bonus.add(bonus);
-    await _db.updateChildBonus(child);
-    notifyListeners();
-  }
-
-  /// Remove a bonus item from a child
-  Future<void> removeBonus(ChildModel child, int index) async {
-    if (index >= 0 && index < child.bonus.length) {
-      child.bonus.removeAt(index);
-      await _db.updateChildBonus(child);
-      notifyListeners();
-    }
   }
 }

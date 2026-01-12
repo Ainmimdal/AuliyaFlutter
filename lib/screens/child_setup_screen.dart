@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:image_picker/image_picker.dart';
 import 'dart:io';
 import '../models/child_model.dart';
 import '../providers/child_provider.dart';
+import '../services/image_picker_service.dart';
 
-/// Child Setup Screen - matches Android's ChildSetup activity
-/// Used for creating new children or editing existing ones
+/// Child Setup Screen - for creating/editing children
 class ChildSetupScreen extends StatefulWidget {
   final ChildModel? existingChild;
 
@@ -22,7 +21,7 @@ class _ChildSetupScreenState extends State<ChildSetupScreen> {
 
   final _nameController = TextEditingController();
   final _dobController = TextEditingController();
-  File? _imageFile;
+  String? _localImagePath; // Local file path for new/changed image
   bool _isLoading = false;
 
   @override
@@ -42,17 +41,10 @@ class _ChildSetupScreenState extends State<ChildSetupScreen> {
   }
 
   Future<void> _pickImage() async {
-    final picker = ImagePicker();
-    final pickedFile = await picker.pickImage(
-      source: ImageSource.gallery,
-      maxWidth: 512,
-      maxHeight: 512,
-      imageQuality: 80,
-    );
-
-    if (pickedFile != null) {
+    final path = await ImagePickerService.pickAndCropImage(context);
+    if (path != null) {
       setState(() {
-        _imageFile = File(pickedFile.path);
+        _localImagePath = path;
       });
     }
   }
@@ -88,7 +80,7 @@ class _ChildSetupScreenState extends State<ChildSetupScreen> {
   Future<void> _saveChild() async {
     if (_nameController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Sila masukkan nama')),
+        const SnackBar(content: Text('Please enter a name')),
       );
       return;
     }
@@ -97,24 +89,25 @@ class _ChildSetupScreenState extends State<ChildSetupScreen> {
 
     try {
       final provider = context.read<ChildProvider>();
+      
+      // Use local path for now - later can upload to Firebase Storage
+      final imagePath = _localImagePath ?? widget.existingChild?.img ?? '';
 
       if (widget.existingChild != null) {
         // Edit mode
         final child = widget.existingChild!;
         child.name = _nameController.text.trim();
         child.age = _dobController.text;
-        // Note: For now, using placeholder since we're not uploading images yet
-        // In production, upload _imageFile to Firebase Storage and get URL
+        child.img = imagePath;
         await provider.updateChild(child);
       } else {
         // Create mode
         final newChild = ChildModel(
           name: _nameController.text.trim(),
           age: _dobController.text,
-          img: '', // Placeholder - add image upload later
+          img: imagePath,
           level: 0,
           star: 0,
-          hariankey: 0,
         );
         await provider.addChild(newChild);
       }
@@ -156,7 +149,7 @@ class _ChildSetupScreenState extends State<ChildSetupScreen> {
                 children: [
                   // Title
                   Text(
-                    isEditing ? 'Edit Anak' : 'Anak Baru',
+                    isEditing ? 'Edit Child' : 'New Child',
                     style: const TextStyle(
                       fontSize: 24,
                       fontWeight: FontWeight.bold,
@@ -171,25 +164,22 @@ class _ChildSetupScreenState extends State<ChildSetupScreen> {
                     child: Stack(
                       children: [
                         Container(
+                          width: 110,
+                          height: 110,
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
                             border: Border.all(color: colorPrimary, width: 3),
+                            color: Colors.grey[200],
                           ),
-                          child: CircleAvatar(
-                            radius: 50,
-                            backgroundColor: Colors.grey[200],
-                            backgroundImage: _getProfileImage(),
-                            child: _shouldShowPlaceholder()
-                                ? const Icon(Icons.person,
-                                    size: 50, color: Colors.grey)
-                                : null,
+                          child: ClipOval(
+                            child: _buildProfileImage(),
                           ),
                         ),
                         Positioned(
                           bottom: 0,
                           right: 0,
                           child: Container(
-                            padding: const EdgeInsets.all(4),
+                            padding: const EdgeInsets.all(8),
                             decoration: const BoxDecoration(
                               color: colorAccent,
                               shape: BoxShape.circle,
@@ -204,21 +194,26 @@ class _ChildSetupScreenState extends State<ChildSetupScreen> {
                       ],
                     ),
                   ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Tap to add photo',
+                    style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+                  ),
                   const SizedBox(height: 24),
 
                   // Name field
                   TextField(
                     controller: _nameController,
                     decoration: InputDecoration(
-                      labelText: 'Nama',
+                      labelText: 'Name',
                       labelStyle: const TextStyle(color: colorPrimary),
+                      prefixIcon: const Icon(Icons.person, color: colorPrimary),
                       border: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                       focusedBorder: OutlineInputBorder(
                         borderRadius: BorderRadius.circular(12),
-                        borderSide:
-                            const BorderSide(color: colorPrimary, width: 2),
+                        borderSide: const BorderSide(color: colorPrimary, width: 2),
                       ),
                     ),
                   ),
@@ -231,17 +226,16 @@ class _ChildSetupScreenState extends State<ChildSetupScreen> {
                       child: TextField(
                         controller: _dobController,
                         decoration: InputDecoration(
-                          labelText: 'Tarikh Lahir',
+                          labelText: 'Date of Birth',
                           labelStyle: const TextStyle(color: colorPrimary),
-                          suffixIcon: const Icon(Icons.calendar_today,
-                              color: colorPrimary),
+                          prefixIcon: const Icon(Icons.cake, color: colorPrimary),
+                          suffixIcon: const Icon(Icons.calendar_today, color: colorPrimary),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                           ),
                           focusedBorder: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
-                            borderSide:
-                                const BorderSide(color: colorPrimary, width: 2),
+                            borderSide: const BorderSide(color: colorPrimary, width: 2),
                           ),
                         ),
                       ),
@@ -263,7 +257,7 @@ class _ChildSetupScreenState extends State<ChildSetupScreen> {
                               borderRadius: BorderRadius.circular(20),
                             ),
                           ),
-                          child: const Text('Tutup'),
+                          child: const Text('Cancel'),
                         ),
                       ),
                       const SizedBox(width: 16),
@@ -287,7 +281,7 @@ class _ChildSetupScreenState extends State<ChildSetupScreen> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Text('Simpan'),
+                              : const Text('Save'),
                         ),
                       ),
                     ],
@@ -301,18 +295,47 @@ class _ChildSetupScreenState extends State<ChildSetupScreen> {
     );
   }
 
-  ImageProvider? _getProfileImage() {
-    if (_imageFile != null) {
-      return FileImage(_imageFile!);
+  Widget _buildProfileImage() {
+    // Priority: new local image > existing local path > network URL > placeholder
+    if (_localImagePath != null && File(_localImagePath!).existsSync()) {
+      return Image.file(
+        File(_localImagePath!),
+        width: 104,
+        height: 104,
+        fit: BoxFit.cover,
+      );
     }
+    
     if (widget.existingChild != null && widget.existingChild!.img.isNotEmpty) {
-      return NetworkImage(widget.existingChild!.img);
+      final img = widget.existingChild!.img;
+      // Check if it's a local path or network URL
+      if (File(img).existsSync()) {
+        return Image.file(
+          File(img),
+          width: 104,
+          height: 104,
+          fit: BoxFit.cover,
+        );
+      } else if (img.startsWith('http')) {
+        return Image.network(
+          img,
+          width: 104,
+          height: 104,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildPlaceholder(),
+        );
+      }
     }
-    return null;
+    
+    return _buildPlaceholder();
   }
 
-  bool _shouldShowPlaceholder() {
-    return _imageFile == null &&
-        (widget.existingChild == null || widget.existingChild!.img.isEmpty);
+  Widget _buildPlaceholder() {
+    return Container(
+      width: 104,
+      height: 104,
+      color: Colors.grey[200],
+      child: const Icon(Icons.person, size: 50, color: Colors.grey),
+    );
   }
 }

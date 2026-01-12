@@ -30,7 +30,7 @@ class DatabaseService {
     return docRef.id;
   }
 
-  /// Update an existing child
+  /// Update an existing child (full update)
   Future<void> updateChild(ChildModel child) async {
     if (child.id == null) {
       throw ArgumentError('Child must have an id to update');
@@ -50,31 +50,5 @@ class DatabaseService {
       return ChildModel.fromJson(doc.data() as Map<String, dynamic>, id: doc.id);
     }
     return null;
-  }
-
-  /// Update child's score (level, star, hariankey)
-  Future<void> updateChildScore(ChildModel child) async {
-    if (child.id == null) return;
-    await childrenCollection.doc(child.id).update({
-      'level': child.level,
-      'star': child.star,
-      'hariankey': child.hariankey,
-    });
-  }
-
-  /// Update child's harian list
-  Future<void> updateChildHarian(ChildModel child) async {
-    if (child.id == null) return;
-    await childrenCollection.doc(child.id).update({
-      'harian': child.harian.map((h) => h.toJson()).toList(),
-    });
-  }
-
-  /// Update child's bonus list
-  Future<void> updateChildBonus(ChildModel child) async {
-    if (child.id == null) return;
-    await childrenCollection.doc(child.id).update({
-      'bonus': child.bonus.map((b) => b.toJson()).toList(),
-    });
   }
 }

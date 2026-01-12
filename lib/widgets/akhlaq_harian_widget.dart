@@ -103,7 +103,7 @@ class _AkhlaqHarianWidgetState extends State<AkhlaqHarianWidget>
     _rocketController.value = fromFrame / totalFrames;
     _rocketController.animateTo(
       toFrame / totalFrames,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 900),
       curve: Curves.easeOut,
     );
     _scrollToLevel(toLevel);
@@ -115,7 +115,7 @@ class _AkhlaqHarianWidgetState extends State<AkhlaqHarianWidget>
     _rocketController.value = fromFrame / totalFrames;
     _rocketController.animateTo(
       toFrame / totalFrames,
-      duration: const Duration(milliseconds: 600),
+      duration: const Duration(milliseconds: 900),
       curve: Curves.easeOut,
     );
     _scrollToLevel(toLevel);
@@ -158,15 +158,14 @@ class _AkhlaqHarianWidgetState extends State<AkhlaqHarianWidget>
     final provider = context.read<ChildProvider>();
     final oldLevel = widget.child.level;
     
-    widget.child.level++;
-    
-    if (widget.child.level >= 9) {
+    // Check if we'll earn a star (level will become 9)
+    if (widget.child.level >= 8) {
+      // Animate to top and earn star
       _animateToStar();
-      widget.child.star++;
-      widget.child.hariankey++;
-      widget.child.level = 0;
+      widget.child.increaseScore(); // This handles star++ and level reset
       await provider.updateChild(widget.child);
     } else {
+      widget.child.level++;
       _animateRocketUp(oldLevel, widget.child.level);
       await provider.updateChild(widget.child);
     }
@@ -207,13 +206,20 @@ class _AkhlaqHarianWidgetState extends State<AkhlaqHarianWidget>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Star with confetti on top
               SizedBox(
                 height: 120,
                 width: 120,
-                child: Lottie.asset('assets/lottie/congrats.json', repeat: true),
+                child: Stack(
+                  alignment: Alignment.center,
+                  children: [
+                    const Icon(Icons.star, color: Colors.amber, size: 70),
+                    Positioned.fill(
+                      child: Lottie.asset('assets/lottie/congrats.json', repeat: true),
+                    ),
+                  ],
+                ),
               ),
-              const SizedBox(height: 16),
-              const Icon(Icons.star, color: Colors.amber, size: 60),
               const SizedBox(height: 16),
               const Text('Hooray!', style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: colorPrimary)),
               const SizedBox(height: 8),
@@ -298,7 +304,7 @@ class _AkhlaqHarianWidgetState extends State<AkhlaqHarianWidget>
                 borderRadius: BorderRadius.circular(20),
               ),
               child: Text(
-                'Level ${widget.child.level}/8   ⭐${widget.child.star}',
+                'Level ${widget.child.level + 1}/10   ⭐${widget.child.star}',
                 style: const TextStyle(
                   color: Colors.white,
                   fontWeight: FontWeight.bold,

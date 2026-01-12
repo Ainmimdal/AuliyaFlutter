@@ -36,8 +36,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
           'assets/lottie/splashscreensmol.json',
           controller: _controller,
           onLoaded: (composition) {
+            // Slow down splash animation slightly (1.2x duration)
             _controller
-              ..duration = composition.duration
+              ..duration = composition.duration * 1.2
               ..forward().whenComplete(() async {
                 // Determine if we need to sign in
                 final auth = context.read<AuthService>();
