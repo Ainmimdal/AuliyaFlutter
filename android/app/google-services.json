@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "905948571532",
+    "project_id": "auliya-79612",
+    "storage_bucket": "auliya-79612.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:905948571532:android:a38c88e019bf7a924dd8a9",
+        "android_client_info": {
+          "package_name": "com.mimdal.auliya"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDNxiTaLTqVZsDozyYXok0WKBFfnLYjg8M"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
