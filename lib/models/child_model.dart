@@ -79,22 +79,15 @@ class ChildModel {
   }
 
   /// Increase level by 1. If level reaches 9, reset to 0 and:
-  /// - Add 1 star to total
+  /// - Add 1 star to total (bank balance)
   /// - Add 1 treat available
-  /// - Add 1 star to selected goal's progress
   /// Returns true if a star was earned.
   bool increaseScore() {
     level++;
     if (level >= 9) {
       level = 0;
-      star++;
+      star++;  // Add to bank balance
       treatsAvailable++; // Earn 1 treat claim
-      
-      // Add progress to selected goal
-      if (selectedGoal != null && !selectedGoal!.isClaimed) {
-        selectedGoal!.addProgress(1);
-      }
-      
       return true;
     }
     return false;
@@ -116,11 +109,17 @@ class ChildModel {
     return false;
   }
 
-  /// Claim a big goal reward
+  /// Check if can afford a goal (have enough stars)
+  bool canAffordGoal(BigGoal goal) {
+    return star >= goal.price && !goal.isClaimed;
+  }
+
+  /// Claim a big goal reward (deducts stars from balance)
   bool claimBigGoal(int index) {
     if (index >= 0 && index < bigGoals.length) {
       final goal = bigGoals[index];
-      if (goal.isComplete) {
+      if (canAffordGoal(goal)) {
+        star -= goal.price;  // Deduct from bank balance
         goal.isClaimed = true;
         return true;
       }
@@ -151,7 +150,6 @@ class ChildModel {
         name: g.name, 
         img: g.img, 
         price: g.price, 
-        progress: g.progress, 
         isClaimed: g.isClaimed
       )).toList(),
       selectedGoalIndex: selectedGoalIndex,

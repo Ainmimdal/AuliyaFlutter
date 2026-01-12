@@ -119,16 +119,12 @@ class ChildProvider extends ChangeNotifier {
     }
   }
 
-  /// Claim a completed big goal
+  /// Claim a big goal (deducts stars from balance)
   Future<bool> claimBigGoal(ChildModel child, int index) async {
-    if (index >= 0 && index < child.bigGoals.length) {
-      final goal = child.bigGoals[index];
-      if (goal.isComplete) {
-        goal.isClaimed = true;
-        await _db.updateChild(child);
-        notifyListeners();
-        return true;
-      }
+    if (child.claimBigGoal(index)) {
+      await _db.updateChild(child);
+      notifyListeners();
+      return true;
     }
     return false;
   }

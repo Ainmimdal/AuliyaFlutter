@@ -41,10 +41,11 @@ class _ChildSetupScreenState extends State<ChildSetupScreen> {
   }
 
   Future<void> _pickImage() async {
-    final path = await ImagePickerService.pickAndCropImage(context);
-    if (path != null) {
+    // Use pickCropAndUpload to upload to Firebase Storage
+    final downloadUrl = await ImagePickerService.pickCropAndUpload(context, folder: 'children');
+    if (downloadUrl != null) {
       setState(() {
-        _localImagePath = path;
+        _localImagePath = downloadUrl; // Now stores URL instead of local path
       });
     }
   }
@@ -296,33 +297,47 @@ class _ChildSetupScreenState extends State<ChildSetupScreen> {
   }
 
   Widget _buildProfileImage() {
-    // Priority: new local image > existing local path > network URL > placeholder
-    if (_localImagePath != null && File(_localImagePath!).existsSync()) {
-      return Image.file(
-        File(_localImagePath!),
-        width: 104,
-        height: 104,
-        fit: BoxFit.cover,
-      );
-    }
-    
-    if (widget.existingChild != null && widget.existingChild!.img.isNotEmpty) {
-      final img = widget.existingChild!.img;
-      // Check if it's a local path or network URL
-      if (File(img).existsSync()) {
+    // Priority: newly uploaded URL > local file > existing image > placeholder
+    if (_localImagePath != null && _localImagePath!.isNotEmpty) {
+      // After upload, _localImagePath contains the download URL
+      if (_localImagePath!.startsWith('http')) {
+        return Image.network(
+          _localImagePath!,
+          width: 104,
+          height: 104,
+          fit: BoxFit.cover,
+          errorBuilder: (_, __, ___) => _buildPlaceholder(),
+        );
+      }
+      // Legacy: local file path
+      if (File(_localImagePath!).existsSync()) {
         return Image.file(
-          File(img),
+          File(_localImagePath!),
           width: 104,
           height: 104,
           fit: BoxFit.cover,
         );
-      } else if (img.startsWith('http')) {
+      }
+    }
+    
+    if (widget.existingChild != null && widget.existingChild!.img.isNotEmpty) {
+      final img = widget.existingChild!.img;
+      if (img.startsWith('http')) {
         return Image.network(
           img,
           width: 104,
           height: 104,
           fit: BoxFit.cover,
           errorBuilder: (_, __, ___) => _buildPlaceholder(),
+        );
+      }
+      // Legacy: local file path
+      if (File(img).existsSync()) {
+        return Image.file(
+          File(img),
+          width: 104,
+          height: 104,
+          fit: BoxFit.cover,
         );
       }
     }

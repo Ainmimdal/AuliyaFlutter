@@ -53,12 +53,12 @@ class _BigGoalsWidgetState extends State<BigGoalsWidget> {
                 ),
                 const SizedBox(height: 20),
                 
-                // Image picker using service
+                // Image picker with upload
                 GestureDetector(
                   onTap: () async {
-                    final path = await ImagePickerService.pickAndCropImage(context);
-                    if (path != null) {
-                      setDialogState(() => selectedImagePath = path);
+                    final downloadUrl = await ImagePickerService.pickCropAndUpload(context, folder: 'goals');
+                    if (downloadUrl != null) {
+                      setDialogState(() => selectedImagePath = downloadUrl);
                     }
                   },
                   child: Container(
@@ -69,19 +69,16 @@ class _BigGoalsWidgetState extends State<BigGoalsWidget> {
                       borderRadius: BorderRadius.circular(16),
                       border: Border.all(color: colorPrimary.withOpacity(0.3), width: 2),
                     ),
-                    child: selectedImagePath != null && File(selectedImagePath!).existsSync()
+                    child: selectedImagePath != null && selectedImagePath!.isNotEmpty
                         ? ClipRRect(
                             borderRadius: BorderRadius.circular(14),
-                            child: Image.file(File(selectedImagePath!), fit: BoxFit.cover, width: 100, height: 100),
+                            child: selectedImagePath!.startsWith('http')
+                                ? Image.network(selectedImagePath!, fit: BoxFit.cover, width: 100, height: 100)
+                                : (File(selectedImagePath!).existsSync()
+                                    ? Image.file(File(selectedImagePath!), fit: BoxFit.cover, width: 100, height: 100)
+                                    : _buildPlaceholder()),
                           )
-                        : const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.add_a_photo, color: Colors.grey, size: 32),
-                              SizedBox(height: 4),
-                              Text('Add Photo', style: TextStyle(fontSize: 11, color: Colors.grey)),
-                            ],
-                          ),
+                        : _buildPlaceholder(),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -196,8 +193,8 @@ class _BigGoalsWidgetState extends State<BigGoalsWidget> {
 
   void _claimGoal(int index) async {
     final goal = widget.child.bigGoals[index];
-    if (goal.isComplete) {
-      goal.isClaimed = true;
+    if (widget.child.canAffordGoal(goal)) {
+      widget.child.claimBigGoal(index); // Deducts stars and marks claimed
       await context.read<ChildProvider>().updateChild(widget.child);
       _audio.playYayComboSound();
       setState(() {});
@@ -308,7 +305,7 @@ class _BigGoalsWidgetState extends State<BigGoalsWidget> {
                       children: [
                         const Icon(Icons.star, color: Colors.amber, size: 18),
                         const SizedBox(width: 4),
-                        Text('${widget.child.star} stars earned', style: const TextStyle(color: Colors.white70)),
+                        Text('${widget.child.star} ⭐ balance', style: const TextStyle(color: Colors.white70)),
                       ],
                     ),
                   ],
@@ -385,7 +382,7 @@ class _BigGoalsWidgetState extends State<BigGoalsWidget> {
                             ),
                           ),
                           Text(
-                            '${goal.progress}/${goal.price} ⭐',
+                            '${widget.child.star.clamp(0, goal.price)}/${goal.price} ⭐',
                             style: TextStyle(
                               color: isSelected ? Colors.amber : Colors.white54,
                               fontSize: 10,
@@ -454,7 +451,7 @@ class _BigGoalsWidgetState extends State<BigGoalsWidget> {
                               Text(
                                 selectedGoal.isClaimed 
                                     ? '✓ Claimed!' 
-                                    : '${selectedGoal.remaining} more stars to go!',
+                                    : '${(selectedGoal.price - widget.child.star).clamp(0, selectedGoal.price)} more stars to go!',
                                 style: TextStyle(
                                   fontSize: 14, 
                                   color: selectedGoal.isClaimed ? Colors.green : Colors.grey[600],
@@ -462,16 +459,16 @@ class _BigGoalsWidgetState extends State<BigGoalsWidget> {
                               ),
                               const SizedBox(height: 20),
                               
-                              // Star progress grid
+                              // Star progress grid - use child.star as progress
                               StarProgressGrid(
                                 total: selectedGoal.price,
-                                progress: selectedGoal.progress,
+                                progress: widget.child.star.clamp(0, selectedGoal.price),
                               ),
                               
                               const SizedBox(height: 20),
                               
-                              // Claim button
-                              if (selectedGoal.isComplete)
+                              // Claim button - show if can afford (stars >= price)
+                              if (widget.child.canAffordGoal(selectedGoal))
                                 ElevatedButton(
                                   onPressed: () => _claimGoal(widget.child.selectedGoalIndex!),
                                   style: ElevatedButton.styleFrom(
@@ -526,6 +523,17 @@ class _BigGoalsWidgetState extends State<BigGoalsWidget> {
           ),
         ],
       ),
+    );
+  }
+  
+  Widget _buildPlaceholder() {
+    return const Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.add_a_photo, color: Colors.grey, size: 32),
+        SizedBox(height: 4),
+        Text('Add Photo', style: TextStyle(fontSize: 11, color: Colors.grey)),
+      ],
     );
   }
 }

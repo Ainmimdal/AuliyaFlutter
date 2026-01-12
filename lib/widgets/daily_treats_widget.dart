@@ -51,12 +51,12 @@ class _DailyTreatsWidgetState extends State<DailyTreatsWidget> {
                 ),
                 const SizedBox(height: 20),
                 
-                // Image picker using service
+                // Image picker with upload
                 GestureDetector(
                   onTap: () async {
-                    final path = await ImagePickerService.pickAndCropImage(context);
-                    if (path != null) {
-                      setDialogState(() => selectedImagePath = path);
+                    final downloadUrl = await ImagePickerService.pickCropAndUpload(context, folder: 'treats');
+                    if (downloadUrl != null) {
+                      setDialogState(() => selectedImagePath = downloadUrl);
                     }
                   },
                   child: Container(
@@ -67,19 +67,16 @@ class _DailyTreatsWidgetState extends State<DailyTreatsWidget> {
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(color: colorPrimary.withOpacity(0.3)),
                     ),
-                    child: selectedImagePath != null && File(selectedImagePath!).existsSync()
+                    child: selectedImagePath != null && selectedImagePath!.isNotEmpty
                         ? ClipRRect(
                             borderRadius: BorderRadius.circular(11),
-                            child: Image.file(File(selectedImagePath!), fit: BoxFit.cover, width: 80, height: 80),
+                            child: selectedImagePath!.startsWith('http')
+                                ? Image.network(selectedImagePath!, fit: BoxFit.cover, width: 80, height: 80)
+                                : (File(selectedImagePath!).existsSync()
+                                    ? Image.file(File(selectedImagePath!), fit: BoxFit.cover, width: 80, height: 80)
+                                    : _buildPlaceholder()),
                           )
-                        : const Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(Icons.add_a_photo, color: Colors.grey, size: 28),
-                              SizedBox(height: 4),
-                              Text('Add Photo', style: TextStyle(fontSize: 10, color: Colors.grey)),
-                            ],
-                          ),
+                        : _buildPlaceholder(),
                   ),
                 ),
                 const SizedBox(height: 16),
@@ -377,6 +374,17 @@ class _DailyTreatsWidgetState extends State<DailyTreatsWidget> {
     return const CircleAvatar(
       backgroundColor: Color(0xFFFFF3E0),
       child: Text('🎁', style: TextStyle(fontSize: 24)),
+    );
+  }
+  
+  Widget _buildPlaceholder() {
+    return const Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: [
+        Icon(Icons.add_a_photo, color: Colors.grey, size: 28),
+        SizedBox(height: 4),
+        Text('Add Photo', style: TextStyle(fontSize: 10, color: Colors.grey)),
+      ],
     );
   }
 }

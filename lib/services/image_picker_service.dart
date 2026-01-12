@@ -2,8 +2,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:image_cropper/image_cropper.dart';
+import 'image_upload_service.dart';
 
-/// Service for picking and cropping images to square format
+/// Service for picking, cropping, and optionally uploading images
 class ImagePickerService {
   static final ImagePicker _picker = ImagePicker();
   
@@ -64,7 +65,7 @@ class ImagePickerService {
     // Pick image
     final XFile? pickedFile = await _picker.pickImage(
       source: source,
-      maxWidth: 1024, // Initial size limit
+      maxWidth: 1024,
       maxHeight: 1024,
       imageQuality: 90,
     );
@@ -75,7 +76,7 @@ class ImagePickerService {
     final croppedFile = await ImageCropper().cropImage(
       sourcePath: pickedFile.path,
       aspectRatio: const CropAspectRatio(ratioX: 1, ratioY: 1),
-      compressQuality: 80, // Compress for storage
+      compressQuality: 80,
       maxWidth: 512,
       maxHeight: 512,
       uiSettings: [
@@ -99,22 +100,81 @@ class ImagePickerService {
     return croppedFile?.path;
   }
   
+  /// Pick, crop, and try to upload image to Firebase Storage
+  /// If upload fails, returns local file path as fallback
+  /// 
+  /// [context] - Build context for showing dialogs
+  /// [folder] - Storage folder (e.g., 'children', 'treats', 'goals')
+  static Future<String?> pickCropAndUpload(BuildContext context, {String folder = 'images'}) async {
+    final localPath = await pickAndCropImage(context);
+    if (localPath == null) return null;
+    
+    // Show uploading indicator
+    if (context.mounted) {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(
+          child: Card(
+            child: Padding(
+              padding: EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CircularProgressIndicator(color: Color(0xFF6A1B9A)),
+                  SizedBox(height: 16),
+                  Text('Uploading...'),
+                ],
+              ),
+            ),
+          ),
+        ),
+      );
+    }
+    
+    // Try to upload to Firebase Storage
+    final downloadUrl = await ImageUploadService.uploadImage(localPath, folder: folder);
+    
+    // Dismiss loading dialog
+    if (context.mounted) {
+      Navigator.of(context, rootNavigator: true).pop();
+    }
+    
+    // If upload succeeded, return URL and delete local file
+    if (downloadUrl != null) {
+      try {
+        final file = File(localPath);
+        if (file.existsSync()) {
+          await file.delete();
+        }
+      } catch (_) {}
+      return downloadUrl;
+    }
+    
+    // Upload failed - fallback to local path
+    print('ImagePickerService: Firebase upload failed, using local path');
+    return localPath;
+  }
+  
   /// Check if file exists at path
   static bool fileExists(String? path) {
     if (path == null || path.isEmpty) return false;
     return File(path).existsSync();
   }
   
-  /// Get ImageProvider from local path or network URL
-  static ImageProvider? getImageProvider(String? localPath, String? networkUrl) {
-    // Prefer local file if exists
-    if (localPath != null && localPath.isNotEmpty && File(localPath).existsSync()) {
-      return FileImage(File(localPath));
+  /// Get ImageProvider from path (handles both local files and URLs)
+  static ImageProvider? getImageProvider(String? path) {
+    if (path == null || path.isEmpty) return null;
+    
+    if (path.startsWith('http')) {
+      return NetworkImage(path);
     }
-    // Fall back to network URL
-    if (networkUrl != null && networkUrl.isNotEmpty) {
-      return NetworkImage(networkUrl);
+    
+    final file = File(path);
+    if (file.existsSync()) {
+      return FileImage(file);
     }
+    
     return null;
   }
 }
