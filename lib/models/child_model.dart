@@ -1,19 +1,20 @@
-import 'harian_model.dart';
-import 'bonus_model.dart';
+import 'daily_treat_model.dart';
+import 'big_goal_model.dart';
 
-/// ChildModel represents a child's data matching Android's Childdata structure
+/// ChildModel represents a child's data for the star chart reward system
 class ChildModel {
-  String? id; // Firestore document ID
-  String? userId;
-  String name;
-  String age;
-  String img;
-  int level;
-  int hariankey;
-  int star;
-  List<int> checkmarks;
-  List<HarianModel> harian;
-  List<BonusModel> bonus;
+  String? id;             // Firestore document ID
+  String? userId;         // Parent's user ID
+  String name;            // Child's name
+  String age;             // Date of birth (MM/DD/YYYY format)
+  String img;             // Profile image URL
+  int level;              // Current rocket level (0-8)
+  int star;               // Total stars earned (currency for big goals)
+  int treatsAvailable;    // Number of daily treats available to claim (1 per star earned)
+  
+  List<DailyTreat> dailyTreats;   // Small rewards to claim
+  List<BigGoal> bigGoals;         // Large rewards with progress
+  int? selectedGoalIndex;         // Index of the active goal being worked toward
 
   ChildModel({
     this.id,
@@ -22,14 +23,13 @@ class ChildModel {
     this.age = "",
     this.img = "",
     this.level = 0,
-    this.hariankey = 0,
     this.star = 0,
-    List<int>? checkmarks,
-    List<HarianModel>? harian,
-    List<BonusModel>? bonus,
-  })  : checkmarks = checkmarks ?? [],
-        harian = harian ?? [],
-        bonus = bonus ?? [];
+    this.treatsAvailable = 0,
+    List<DailyTreat>? dailyTreats,
+    List<BigGoal>? bigGoals,
+    this.selectedGoalIndex,
+  })  : dailyTreats = dailyTreats ?? [],
+        bigGoals = bigGoals ?? [];
 
   factory ChildModel.fromJson(Map<String, dynamic> json, {String? id}) {
     return ChildModel(
@@ -39,17 +39,17 @@ class ChildModel {
       age: json['age'] as String? ?? "",
       img: json['img'] as String? ?? "",
       level: json['level'] as int? ?? 0,
-      hariankey: json['hariankey'] as int? ?? 0,
       star: json['star'] as int? ?? 0,
-      checkmarks: (json['checkmarks'] as List<dynamic>?)?.map((e) => e as int).toList() ?? [],
-      harian: (json['harian'] as List<dynamic>?)
-              ?.map((e) => HarianModel.fromJson(e as Map<String, dynamic>))
+      treatsAvailable: json['treatsAvailable'] as int? ?? 0,
+      dailyTreats: (json['dailyTreats'] as List<dynamic>?)
+              ?.map((e) => DailyTreat.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
-      bonus: (json['bonus'] as List<dynamic>?)
-              ?.map((e) => BonusModel.fromJson(e as Map<String, dynamic>))
+      bigGoals: (json['bigGoals'] as List<dynamic>?)
+              ?.map((e) => BigGoal.fromJson(e as Map<String, dynamic>))
               .toList() ??
           [],
+      selectedGoalIndex: json['selectedGoalIndex'] as int?,
     );
   }
 
@@ -60,27 +60,37 @@ class ChildModel {
       'age': age,
       'img': img,
       'level': level,
-      'hariankey': hariankey,
       'star': star,
-      'checkmarks': checkmarks,
-      'harian': harian.map((e) => e.toJson()).toList(),
-      'bonus': bonus.map((e) => e.toJson()).toList(),
+      'treatsAvailable': treatsAvailable,
+      'dailyTreats': dailyTreats.map((e) => e.toJson()).toList(),
+      'bigGoals': bigGoals.map((e) => e.toJson()).toList(),
+      'selectedGoalIndex': selectedGoalIndex,
     };
   }
 
-  /// Increase level by 1. If level reaches 9, reset to 0 and add a star.
+  /// Get the currently selected goal, or null if none selected
+  BigGoal? get selectedGoal {
+    if (selectedGoalIndex != null && 
+        selectedGoalIndex! >= 0 && 
+        selectedGoalIndex! < bigGoals.length) {
+      return bigGoals[selectedGoalIndex!];
+    }
+    return null;
+  }
+
+  /// Increase level by 1. If level reaches 9, reset to 0 and:
+  /// - Add 1 star to total (bank balance)
+  /// - Add 1 treat available
   /// Returns true if a star was earned.
   bool increaseScore() {
-    if (level < 9) {
-      level++;
-      return false;
-    } else {
-      // Level 9 reached, earn a star!
+    level++;
+    if (level >= 9) {
       level = 0;
-      star++;
-      hariankey++;
+      star++;  // Add to bank balance
+      treatsAvailable++; // Earn 1 treat claim
       return true;
     }
+    return false;
   }
 
   /// Decrease level by 1, minimum 0
@@ -90,33 +100,38 @@ class ChildModel {
     }
   }
 
-  /// Reset level to 0 (called after earning a star)
-  void resetScore() {
-    level = 0;
-  }
-
-  /// Increase hariankey for claiming harian rewards
-  void increaseHariankey() {
-    hariankey++;
-  }
-
-  /// Decrease hariankey when claiming harian reward
-  bool decreaseHariankey() {
-    if (hariankey > 0) {
-      hariankey--;
+  /// Claim a daily treat (costs 1 treatsAvailable)
+  bool claimDailyTreat() {
+    if (treatsAvailable > 0) {
+      treatsAvailable--;
       return true;
     }
     return false;
   }
 
-  /// Claim a bonus by deducting its price from stars
-  /// Returns true if successful
-  bool claimBonus(int bonusPrice) {
-    if (star >= bonusPrice) {
-      star -= bonusPrice;
-      return true;
+  /// Check if can afford a goal (have enough stars)
+  bool canAffordGoal(BigGoal goal) {
+    return star >= goal.price && !goal.isClaimed;
+  }
+
+  /// Claim a big goal reward (deducts stars from balance)
+  bool claimBigGoal(int index) {
+    if (index >= 0 && index < bigGoals.length) {
+      final goal = bigGoals[index];
+      if (canAffordGoal(goal)) {
+        star -= goal.price;  // Deduct from bank balance
+        goal.isClaimed = true;
+        return true;
+      }
     }
     return false;
+  }
+
+  /// Select a goal to work toward
+  void selectGoal(int index) {
+    if (index >= 0 && index < bigGoals.length) {
+      selectedGoalIndex = index;
+    }
   }
 
   /// Copy this child model
@@ -128,16 +143,21 @@ class ChildModel {
       age: age,
       img: img,
       level: level,
-      hariankey: hariankey,
       star: star,
-      checkmarks: List.from(checkmarks),
-      harian: harian.map((h) => HarianModel(name: h.name, price: h.price, img: h.img)).toList(),
-      bonus: bonus.map((b) => BonusModel(name: b.name, img: b.img, price: b.price)).toList(),
+      treatsAvailable: treatsAvailable,
+      dailyTreats: dailyTreats.map((t) => DailyTreat(name: t.name, img: t.img)).toList(),
+      bigGoals: bigGoals.map((g) => BigGoal(
+        name: g.name, 
+        img: g.img, 
+        price: g.price, 
+        isClaimed: g.isClaimed
+      )).toList(),
+      selectedGoalIndex: selectedGoalIndex,
     );
   }
 
   @override
   String toString() {
-    return 'ChildModel{id: $id, name: $name, age: $age, level: $level, star: $star, hariankey: $hariankey}';
+    return 'ChildModel{id: $id, name: $name, level: $level, star: $star, treatsAvailable: $treatsAvailable}';
   }
 }

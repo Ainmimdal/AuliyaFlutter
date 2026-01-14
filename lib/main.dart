@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'services/auth_service.dart';
 import 'services/database_service.dart';
 import 'providers/child_provider.dart';
@@ -27,14 +28,6 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    // We need a userId to instantiate DatabaseService. 
-    // For now, we'll wait for Auth State in a wrapper or assume anonymous.
-    // A better approach is using ProxyProvider or initializing DB service after Auth.
-    // For simplicity in this migration, we'll setup Providers at root, 
-    // but ChildProvider needs a DatabaseService which needs a UID.
-    
-    // We will use a StreamProvider for User?, then a valid DatabaseService.
-    
     return MultiProvider(
       providers: [
         Provider<AuthService>(create: (_) => AuthService()),
@@ -43,11 +36,6 @@ class MyApp extends StatelessWidget {
           initialData: null,
         ),
         ChangeNotifierProvider(create: (_) => RewardProvider()..loadRewards()),
-        // ChildProvider depends on DatabaseService, which depends on Auth.
-        // We can handle this logic in a wrapper widget or use ProxyProvider.
-        // For now, we'll initialize ChildProvider with a placeholder and update it 
-        // or let the UI handle the connection.
-        // Let's use ProxyProvider for DatabaseService.
         ProxyProvider<User?, DatabaseService>(
           update: (_, user, __) => DatabaseService(uid: user?.uid ?? ''),
         ),
@@ -59,9 +47,16 @@ class MyApp extends StatelessWidget {
       child: MaterialApp(
         title: 'Auliya',
         theme: ThemeData(
-          colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+          colorScheme: ColorScheme.fromSeed(
+            seedColor: const Color(0xFF6A1B9A),
+            brightness: Brightness.light,
+          ),
           useMaterial3: true,
-          fontFamily: 'Inter', // Assuming Google Fonts 'Inter' or similar
+          // Use Nunito font family
+          textTheme: GoogleFonts.nunitoTextTheme(
+            Theme.of(context).textTheme,
+          ),
+          fontFamily: GoogleFonts.nunito().fontFamily,
         ),
         home: const SplashScreen(),
       ),
