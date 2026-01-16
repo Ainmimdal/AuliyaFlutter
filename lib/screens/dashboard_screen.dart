@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'dart:io';
+import 'dart:ui';
 import 'dart:math' as math;
 import '../services/auth_service.dart';
 import '../services/database_service.dart';
@@ -8,6 +9,8 @@ import '../models/child_model.dart';
 import '../providers/child_provider.dart';
 import 'child_detail_screen.dart';
 import 'child_setup_screen.dart';
+import 'doa_screen.dart';
+import 'stats_screen.dart';
 
 class DashboardScreen extends StatefulWidget {
   const DashboardScreen({super.key});
@@ -59,19 +62,12 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           drawer: _buildDrawer(context, authService),
           body: Stack(
             children: [
-              // Animated gradient background
+              // Space background image
               Container(
                 decoration: const BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      Color(0xFF1A0A2E),
-                      Color(0xFF2D1F4A),
-                      Color(0xFF3D2952),
-                      Color(0xFF1A0A2E),
-                    ],
-                    stops: [0.0, 0.3, 0.6, 1.0],
+                  image: DecorationImage(
+                    image: AssetImage('assets/images/spacebg.png'),
+                    fit: BoxFit.cover,
                   ),
                 ),
               ),
@@ -184,26 +180,18 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
               borderRadius: BorderRadius.circular(12),
               border: Border.all(color: Colors.white.withOpacity(0.2)),
             ),
-            child: IconButton(
-              icon: const Icon(Icons.menu_rounded, color: Colors.white),
-              onPressed: () => Scaffold.of(context).openDrawer(),
+            child: Builder(
+              builder: (scaffoldContext) => IconButton(
+                icon: const Icon(Icons.menu_rounded, color: Colors.white),
+                onPressed: () => Scaffold.of(scaffoldContext).openDrawer(),
+              ),
             ),
           ),
           const Spacer(),
-          // App logo/title
-          ShaderMask(
-            shaderCallback: (bounds) => const LinearGradient(
-              colors: [colorGold, Colors.white, colorGold],
-            ).createShader(bounds),
-            child: const Text(
-              'AULIYA',
-              style: TextStyle(
-                fontSize: 28,
-                fontWeight: FontWeight.w900,
-                letterSpacing: 4,
-                color: Colors.white,
-              ),
-            ),
+          // App logo/title - banner image
+          Image.asset(
+            'assets/images/banner.png',
+            height: 60,
           ),
           const Spacer(),
           const SizedBox(width: 48), // Balance for menu button
@@ -304,23 +292,24 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           );
         },
         child: Container(
+          margin: const EdgeInsets.all(4),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                Colors.white.withOpacity(0.15),
-                Colors.white.withOpacity(0.05),
+                Colors.white.withOpacity(0.25),
+                Colors.white.withOpacity(0.1),
               ],
             ),
             border: Border.all(
-              color: Colors.white.withOpacity(0.2),
+              color: Colors.white.withOpacity(0.3),
               width: 1.5,
             ),
             boxShadow: [
               BoxShadow(
-                color: colorPrimary.withOpacity(0.3),
+                color: Colors.black.withOpacity(0.3),
                 blurRadius: 20,
                 spreadRadius: -5,
               ),
@@ -328,84 +317,90 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(24),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Glowing avatar
-                Container(
-                  padding: const EdgeInsets.all(4),
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    gradient: LinearGradient(
-                      colors: [colorAccent, colorPrimary],
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: colorAccent.withOpacity(0.4),
-                        blurRadius: 15,
-                        spreadRadius: 2,
-                      ),
-                    ],
-                  ),
-                  child: CircleAvatar(
-                    radius: 42,
-                    backgroundColor: Colors.grey[900],
-                    backgroundImage: _getChildImage(child.img),
-                    child: child.img.isEmpty
-                        ? const Icon(Icons.person, size: 40, color: Colors.white70)
-                        : null,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Name
-                Text(
-                  child.name,
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                  textAlign: TextAlign.center,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
-                const SizedBox(height: 4),
-                // Age
-                Text(
-                  _calculateAge(child.age),
-                  style: TextStyle(
-                    fontSize: 12,
-                    color: Colors.white.withOpacity(0.6),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                // Stars badge
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [colorGold.withOpacity(0.3), colorGold.withOpacity(0.1)],
-                    ),
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(color: colorGold.withOpacity(0.5)),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(Icons.star_rounded, color: colorGold, size: 18),
-                      const SizedBox(width: 4),
-                      Text(
-                        '${child.star}',
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: colorGold,
-                          fontSize: 14,
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+              child: Padding(
+                padding: const EdgeInsets.all(8),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Glowing avatar
+                    Container(
+                      padding: const EdgeInsets.all(4),
+                      decoration: BoxDecoration(
+                        shape: BoxShape.circle,
+                        gradient: LinearGradient(
+                          colors: [colorAccent, colorPrimary],
                         ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: colorAccent.withOpacity(0.4),
+                            blurRadius: 15,
+                            spreadRadius: 2,
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                      child: CircleAvatar(
+                        radius: 36,
+                        backgroundColor: Colors.grey[900],
+                        backgroundImage: _getChildImage(child.img),
+                        child: child.img.isEmpty
+                            ? const Icon(Icons.person, size: 40, color: Colors.white70)
+                            : null,
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    // Name
+                    Text(
+                      child.name,
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                      textAlign: TextAlign.center,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 4),
+                    // Age
+                    Text(
+                      _calculateAge(child.age),
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    // Stars badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [colorGold.withOpacity(0.3), colorGold.withOpacity(0.1)],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: colorGold.withOpacity(0.5)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.star_rounded, color: colorGold, size: 18),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${child.star}',
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              color: colorGold,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
                 ),
-              ],
+              ),
             ),
           ),
         ),
@@ -460,7 +455,14 @@ class _DashboardScreenState extends State<DashboardScreen> with TickerProviderSt
             ),
           ),
           _buildDrawerItem(Icons.home_rounded, 'Home', true, () => Navigator.pop(context)),
-          _buildDrawerItem(Icons.settings_rounded, 'Settings', false, () {}),
+          _buildDrawerItem(Icons.menu_book_rounded, 'Doa Harian', false, () {
+            Navigator.pop(context);
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const DoaScreen()));
+          }),
+          _buildDrawerItem(Icons.bar_chart_rounded, 'Statistics', false, () {
+            Navigator.pop(context);
+            Navigator.push(context, MaterialPageRoute(builder: (_) => const StatsScreen()));
+          }),
           const Divider(color: Colors.white24),
           _buildDrawerItem(Icons.logout_rounded, 'Sign Out', false, () async {
             Navigator.pop(context);

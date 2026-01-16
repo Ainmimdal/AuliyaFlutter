@@ -28,7 +28,7 @@ Most existing habit-tracking applications are **generic** and not designed speci
 
 ### Relevance
 
-**Auliya** bridges the gap between traditional habit-tracking methods and modern mobile technology by offering an engaging, ethical, and Islamic-focused solution for families. The application integrates Islamic teachings with modern mobile technology to create a family-friendly, ethical, and engaging digital experience.
+**Auliya** bridges the gap between traditional habit-tracking methods and modern mobile technology by offering an engaging, ethical, and Islamic-focused solution for families.
 
 ---
 
@@ -38,8 +38,8 @@ Most existing habit-tracking applications are **generic** and not designed speci
 2. Design a **gamified habit tracking system** that motivates children to perform daily good deeds
 3. Provide **parent-managed child profiles** for individualized habit monitoring
 4. Implement a **star-based reward system** that reinforces positive behavior
-5. Integrate **Islamic educational content** (duʿāʾ) in a child-friendly format
-6. Visualize progress using **charts and analytics**
+5. Integrate **Islamic educational content** (duʿāʾ collection) in a child-friendly format
+6. Visualize progress using **weekly charts and statistics**
 7. Ensure **Shariah-compliant, ethical, and privacy-focused** principles
 
 ---
@@ -59,47 +59,61 @@ Most existing habit-tracking applications are **generic** and not designed speci
 
 | Module | Description | Status |
 |--------|-------------|--------|
-| **Authentication** | Anonymous Firebase auth (Google Sign-In planned) | ✅ Implemented |
-| **Dashboard** | Child cards with glassmorphism design, animated background | ✅ Implemented |
+| **Google Sign-In Authentication** | Firebase auth with Google Sign-In, anonymous fallback | ✅ Implemented |
+| **Dashboard** | Child cards with glassmorphism, spacebg backdrop, blur effects | ✅ Implemented |
 | **Child Management** | Add/Edit/Delete child profiles with photo, name, DOB | ✅ Implemented |
 | **Star Chart (Akhlaq Harian)** | 10-level rocket animation, earn stars on completion | ✅ Implemented |
 | **Daily Treats** | Small rewards claimable after earning stars | ✅ Implemented |
-| **Big Goals** | Large rewards with star progress grid, bank-like balance system | ✅ Implemented |
-| **Duʿāʾ Collection** | Islamic prayers with translations | 🔄 Partial |
-| **Progress Charts** | Visual analytics with fl_chart | 🔄 Partial |
-| **Firebase Storage** | Cloud image storage with local fallback | ✅ Implemented |
+| **Big Goals** | Large rewards with star progress grid, bank-like balance | ✅ Implemented |
+| **Duʿāʾ Collection** | 10 Islamic prayers with Arabic, transliteration, meaning | ✅ Implemented |
+| **Statistics** | Weekly bar chart, child selector, per-child achievements | ✅ Implemented |
+| **Firebase Storage** | Cloud image storage for child/goal photos | ✅ Implemented |
 
 ### UI Components
 
-- **Splash Screen**: Lottie animation with Firebase initialization
-- **Navigation Drawer**: User profile, settings, sign-out
-- **Child Cards**: Glassmorphism with gradient borders, glowing avatars
-- **Star Progress Grid**: Animated cells with smart scaling for large goals
+- **Splash Screen**: Lottie animation with space background, Google Sign-In
+- **Navigation Drawer**: Google profile picture/name, navigation items
+- **Child Cards**: Glassmorphism with BackdropFilter blur, gradient borders
+- **Star Progress Grid**: Animated cells with smart scaling
 - **Celebration Dialogs**: Confetti animations on achievements
+- **Weekly Chart**: fl_chart bar chart with week navigation
 
 ### Interactions
 
-- Tap child card → Navigate to child detail
-- Swipe left on treats/goals → Delete
-- Long press goal card → Delete confirmation
-- Tap image placeholder → Camera/Gallery picker with square crop
+| Gesture | Action |
+|---------|--------|
+| Tap child card | Navigate to child detail screen |
+| Swipe left on treats/goals | Delete with confirmation |
+| Tap image placeholder | Camera/Gallery picker with square crop |
+| Tap Good/Bad button | Increase/decrease level, earn stars |
+| Tap ≡ menu | Open navigation drawer |
 
 ---
 
-## g) Proposed UI Mock-up
+## g) UI Screenshots
 
-> **Note**: Wireframes created in Figma. Key screens:
+### Splash Screen
+Space background with Lottie rocket animation, Google Sign-In prompt.
 
-| Screen | Description |
-|--------|-------------|
-| Splash | Animated logo with loading indicator |
-| Dashboard | Grid of child cards with floating add button |
-| Child Detail | Tab layout: Star Chart, Daily Treats, Big Goals |
-| Star Chart | Rocket animation with Good/Bad buttons |
-| Treats List | Swipeable reward cards with claim button |
-| Goals View | Horizontal goal selector + star progress grid |
+### Dashboard
+![Dashboard with child cards](assets/images/spacebg.png as background)
+- Custom banner logo
+- Glassmorphic child cards with blur effect
+- Floating add button
 
-*Figma wireframes to be attached separately*
+### Child Detail Tabs
+1. **Star Chart** – Rocket animation with Good/Bad buttons
+2. **Daily Treats** – Swipeable reward cards
+3. **Big Goals** – Goal cards with progress grid
+
+### Doa Harian Screen
+Expandable cards with Arabic text, transliteration, and meaning.
+
+### Statistics Screen
+- Child selector dropdown
+- Weekly bar chart with navigation
+- Summary stats (stars, goals, treats)
+- Achievements badges
 
 ---
 
@@ -111,20 +125,24 @@ Most existing habit-tracking applications are **generic** and not designed speci
 lib/
 ├── main.dart                 # App entry, providers, theme
 ├── models/
-│   ├── child_model.dart      # Child data with treats & goals
+│   ├── child_model.dart      # Child data with treats, goals, starHistory
 │   ├── daily_treat_model.dart
-│   └── big_goal_model.dart
+│   ├── big_goal_model.dart
+│   ├── dua_model.dart
+│   └── star_entry_model.dart
 ├── providers/
-│   └── child_provider.dart   # ChangeNotifier for state
+│   └── child_provider.dart   # ChangeNotifier for state management
 ├── screens/
-│   ├── splash_screen.dart
-│   ├── dashboard_screen.dart
+│   ├── splash_screen.dart    # Lottie + Google Sign-In
+│   ├── dashboard_screen.dart # Main screen with child grid
 │   ├── child_setup_screen.dart
-│   └── child_detail_screen.dart
+│   ├── child_detail_screen.dart
+│   ├── doa_screen.dart       # Islamic prayers collection
+│   └── stats_screen.dart     # Weekly statistics
 ├── services/
-│   ├── auth_service.dart
-│   ├── database_service.dart
-│   ├── audio_service.dart
+│   ├── auth_service.dart     # Google + Anonymous auth
+│   ├── database_service.dart # Firestore operations
+│   ├── audio_service.dart    # Sound effects
 │   ├── image_picker_service.dart
 │   └── image_upload_service.dart
 └── widgets/
@@ -139,9 +157,9 @@ lib/
 **Provider** (ChangeNotifier pattern)
 
 ```dart
-// main.dart
 MultiProvider(
   providers: [
+    Provider<AuthService>(create: (_) => AuthService()),
     ChangeNotifierProvider(create: (_) => ChildProvider()),
   ],
   child: MaterialApp(...),
@@ -154,9 +172,9 @@ context.watch<ChildProvider>().children; // Reactive rebuild
 
 **Why Provider?**
 - Lightweight and officially recommended
-- Easy to learn for academic projects
-- Sufficient for app complexity
 - Clean separation of UI and business logic
+- Easy to learn and maintain
+- Sufficient for app complexity
 
 ---
 
@@ -171,7 +189,7 @@ users/
         └── {childId}/
             ├── name: string
             ├── age: string (DOB format)
-            ├── img: string (URL or local path)
+            ├── img: string (Firebase Storage URL)
             ├── level: int (0-9)
             ├── star: int (bank balance)
             ├── treatsAvailable: int
@@ -179,6 +197,8 @@ users/
             │   └── { name, img }
             ├── bigGoals: array
             │   └── { name, img, price, isClaimed }
+            ├── starHistory: array
+            │   └── { date, count }
             └── selectedGoalIndex: int?
 ```
 
@@ -190,12 +210,12 @@ users/
 │  (Firebase) │       │             │       │             │
 │  ─────────  │       │  ─────────  │       │  ─────────  │
 │  uid        │       │  id         │       │  name       │
-│  anonymous  │       │  name       │       │  img        │
-└─────────────┘       │  age        │       └─────────────┘
-                      │  img        │
+│  displayName│       │  name       │       │  img        │
+│  photoURL   │       │  age        │       └─────────────┘
+└─────────────┘       │  img        │
                       │  level      │       ┌─────────────┐
                       │  star       │ 1───n │  BigGoal    │
-                      │  treats     │       │             │
+                      │  starHistory│       │             │
                       └─────────────┘       │  ─────────  │
                                             │  name       │
                                             │  img        │
@@ -214,56 +234,37 @@ users/
 flowchart TD
     A[Launch App] --> B[Splash Screen]
     B --> C{Authenticated?}
-    C -->|No| D[Anonymous Sign-In]
-    D --> E[Dashboard]
+    C -->|No| D[Google Sign-In]
+    D -->|Success| E[Dashboard]
+    D -->|Cancel| F[Anonymous Sign-In]
+    F --> E
     C -->|Yes| E
     
-    E --> F[Tap Child Card]
-    E --> G[Tap Add Button]
+    E --> G[Tap Child Card]
+    E --> H[Tap Add Button]
+    E --> I[Open Drawer]
     
-    G --> H[Child Setup Screen]
-    H --> I[Save Child]
-    I --> E
+    I --> J[Doa Harian]
+    I --> K[Statistics]
+    I --> L[Sign Out]
     
-    F --> J[Child Detail Screen]
-    J --> K[Star Chart Tab]
-    J --> L[Daily Treats Tab]
-    J --> M[Big Goals Tab]
+    H --> M[Child Setup Screen]
+    M --> E
     
-    K --> N[Good Button]
-    N --> O{Level = 9?}
-    O -->|Yes| P[⭐ Earned! 🎉]
-    P --> Q[Star Added to Balance]
-    O -->|No| R[Level++]
+    G --> N[Child Detail Screen]
+    N --> O[Star Chart Tab]
+    N --> P[Daily Treats Tab]
+    N --> Q[Big Goals Tab]
     
-    M --> S[Select Goal]
-    S --> T{Stars >= Price?}
-    T -->|Yes| U[Claim Button Shows]
-    U --> V[Claim Goal]
-    V --> W[Stars Deducted]
-    W --> X[🎉 Celebration]
-```
-
-### Star Earning Sequence Diagram
-
-```
-Parent          StarChart           ChildModel         Firebase
-  │                 │                    │                │
-  │  Tap "Good"     │                    │                │
-  │────────────────>│                    │                │
-  │                 │  increaseScore()   │                │
-  │                 │───────────────────>│                │
-  │                 │                    │ level++        │
-  │                 │                    │ if level>=9:   │
-  │                 │                    │   star++       │
-  │                 │                    │   level=0      │
-  │                 │  return earned     │                │
-  │                 │<───────────────────│                │
-  │                 │                    │                │
-  │                 │        updateChild()                │
-  │                 │────────────────────────────────────>│
-  │  Show Dialog    │                    │                │
-  │<────────────────│                    │                │
+    O --> R[Good Button]
+    R --> S{Level = 9?}
+    S -->|Yes| T[⭐ Earned!]
+    T --> U[Star Added + History]
+    S -->|No| V[Level++]
+    
+    K --> W[Select Child]
+    W --> X[View Weekly Chart]
+    X --> Y[Navigate Weeks]
 ```
 
 ---
@@ -279,35 +280,63 @@ Parent          StarChart           ChildModel         Firebase
 - Firebase for Flutter: https://firebase.google.com/docs/flutter/setup
 - Cloud Firestore: https://firebase.google.com/docs/firestore
 - Firebase Authentication: https://firebase.google.com/docs/auth
+- Google Sign-In: https://firebase.google.com/docs/auth/flutter/federated-auth
 
 ### UI/UX Design
 - Material Design 3: https://m3.material.io
 - Lottie Animations: https://lottiefiles.com
-- Google Fonts: https://fonts.google.com/specimen/Nunito
+- fl_chart: https://pub.dev/packages/fl_chart
 
 ### Packages Used
-| Package | Purpose |
-|---------|---------|
-| provider | State management |
-| firebase_core | Firebase initialization |
-| firebase_auth | Authentication |
-| cloud_firestore | Database |
-| firebase_storage | Image storage |
-| lottie | Animations |
-| google_fonts | Typography |
-| image_picker | Camera/Gallery |
-| image_cropper | Square crop |
-| audioplayers | Sound effects |
-| fl_chart | Progress charts |
+
+| Package | Version | Purpose |
+|---------|---------|---------|
+| provider | ^6.1.1 | State management |
+| firebase_core | ^2.30.1 | Firebase initialization |
+| firebase_auth | ^4.19.4 | Authentication |
+| cloud_firestore | ^4.17.2 | Database |
+| firebase_storage | ^11.7.0 | Image storage |
+| google_sign_in | ^6.2.1 | Google authentication |
+| lottie | ^3.1.0 | Animations |
+| google_fonts | ^6.1.0 | Typography |
+| image_picker | ^1.0.4 | Camera/Gallery |
+| image_cropper | ^8.0.2 | Square crop |
+| audioplayers | ^5.2.1 | Sound effects |
+| fl_chart | ^0.66.2 | Progress charts |
+| shared_preferences | ^2.2.2 | Local storage |
 
 ---
 
-## Project Constraints
+## Summary of Achieved Features
 
-- Limited development time within academic semester
-- Dependency on internet connectivity for Firebase services
-- Requirement to comply with Islamic and ethical guidelines
-- Learning curve associated with Flutter and Firebase integration
+| Feature | Implementation |
+|---------|----------------|
+| **Authentication** | Google Sign-In with anonymous fallback |
+| **Dashboard** | Custom space background, glassmorphic cards with blur |
+| **Child Profiles** | Full CRUD with Firebase Storage images |
+| **Star Chart** | 10-level rocket animation, sounds, celebratory dialogs |
+| **Daily Treats** | Add/delete treats, claim mechanics |
+| **Big Goals** | Star progress grid, claim when affordable |
+| **Doa Collection** | 10 prayers with expandable cards |
+| **Statistics** | Weekly bar chart, child selector, achievements |
+| **Data Persistence** | Cloud Firestore with real-time sync |
+
+---
+
+## Limitations and Future Enhancements
+
+### Current Limitations
+- Star history only tracks stars earned after implementation
+- No push notifications for reminders
+- Single device per account (no multi-device sync indicator)
+
+### Future Enhancements
+- Push notifications for prayer times
+- Multi-language support (Malay, Arabic)
+- More duʿāʾ with audio recitation
+- Family sharing between parents
+- Yearly statistics view
+- Export progress reports
 
 ---
 
@@ -317,9 +346,11 @@ Parent          StarChart           ChildModel         Firebase
 2. ✅ UI/UX design and navigation flow
 3. ✅ Backend setup and Firebase integration
 4. ✅ Core feature implementation
-5. 🔄 Testing and debugging
-6. 🔄 Final documentation and presentation
+5. ✅ Statistics and Doa screens
+6. ✅ Google Sign-In integration
+7. ✅ Testing and debugging
+8. ✅ Final documentation
 
 ---
 
-*Last Updated: January 2026*
+*Last Updated: January 16, 2026*

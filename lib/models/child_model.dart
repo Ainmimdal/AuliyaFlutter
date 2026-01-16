@@ -1,5 +1,6 @@
 import 'daily_treat_model.dart';
 import 'big_goal_model.dart';
+import 'star_entry_model.dart';
 
 /// ChildModel represents a child's data for the star chart reward system
 class ChildModel {
@@ -15,6 +16,7 @@ class ChildModel {
   List<DailyTreat> dailyTreats;   // Small rewards to claim
   List<BigGoal> bigGoals;         // Large rewards with progress
   int? selectedGoalIndex;         // Index of the active goal being worked toward
+  List<StarEntry> starHistory;    // History of when stars were earned
 
   ChildModel({
     this.id,
@@ -28,8 +30,10 @@ class ChildModel {
     List<DailyTreat>? dailyTreats,
     List<BigGoal>? bigGoals,
     this.selectedGoalIndex,
+    List<StarEntry>? starHistory,
   })  : dailyTreats = dailyTreats ?? [],
-        bigGoals = bigGoals ?? [];
+        bigGoals = bigGoals ?? [],
+        starHistory = starHistory ?? [];
 
   factory ChildModel.fromJson(Map<String, dynamic> json, {String? id}) {
     return ChildModel(
@@ -50,6 +54,10 @@ class ChildModel {
               .toList() ??
           [],
       selectedGoalIndex: json['selectedGoalIndex'] as int?,
+      starHistory: (json['starHistory'] as List<dynamic>?)
+              ?.map((e) => StarEntry.fromJson(e as Map<String, dynamic>))
+              .toList() ??
+          [],
     );
   }
 
@@ -65,6 +73,7 @@ class ChildModel {
       'dailyTreats': dailyTreats.map((e) => e.toJson()).toList(),
       'bigGoals': bigGoals.map((e) => e.toJson()).toList(),
       'selectedGoalIndex': selectedGoalIndex,
+      'starHistory': starHistory.map((e) => e.toJson()).toList(),
     };
   }
 
@@ -88,6 +97,7 @@ class ChildModel {
       level = 0;
       star++;  // Add to bank balance
       treatsAvailable++; // Earn 1 treat claim
+      starHistory.add(StarEntry(date: DateTime.now())); // Track for charts
       return true;
     }
     return false;
@@ -153,6 +163,7 @@ class ChildModel {
         isClaimed: g.isClaimed
       )).toList(),
       selectedGoalIndex: selectedGoalIndex,
+      starHistory: starHistory.map((s) => StarEntry(date: s.date, count: s.count)).toList(),
     );
   }
 
